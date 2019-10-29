@@ -45,7 +45,7 @@
     - kubectl
 
   - name: copy docker config
-    copy: src=/etc/ansible/docker/daemon.json dest=/etc/docker/daemon.json
+    copy: src=./daemon.json dest=/etc/docker/daemon.json
             owner=root group=root mode=0644
     notify:
     - restart docker service
