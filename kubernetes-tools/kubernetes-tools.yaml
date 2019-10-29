@@ -44,6 +44,19 @@
     - kubeadm
     - kubectl
 
+  - name: get current user name
+    become: false
+    local_action: command whoami
+    register: current_username
+  - debug: var=current_username
+
+
+  - name: add current user to docker group
+    user:
+      name: "{{current_username.stdout}}"
+      groups: docker
+      append: true
+
   - name: copy docker config
     copy: src=./daemon.json dest=/etc/docker/daemon.json
             owner=root group=root mode=0644
