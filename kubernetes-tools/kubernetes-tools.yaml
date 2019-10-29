@@ -4,6 +4,8 @@
   become: yes
   become_method: sudo
 
+  # Preparation
+
   tasks:
   - name: add key for docker repo
     apt_key:
@@ -22,6 +24,8 @@
       repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
       state: present
 
+  # Installation
+
   - name: install dependencies for docker and kubernetes
     package: name={{item}} state=latest
     with_items:
@@ -31,12 +35,14 @@
     - gnupg-agent
     - software-properties-common
     - bash-completion
+
   - name: install docker
     package: name={{item}} state=latest
     with_items:
     - docker-ce
     - docker-ce-cli
     - containerd.io
+
   - name: install kubernetes
     package: name={{item}} state=latest
     with_items:
@@ -44,18 +50,61 @@
     - kubeadm
     - kubectl
 
+  - name: download helm installation script
+    get_url: url=https://git.io/get_helm.sh dest=/tmp/get_helm.sh mode=755
+
+  - name: install helm
+    command: /tmp/get_helm.sh
+
+  - name: remove helm installation script
+    file:
+      path: /tmp/get_helm.sh
+      state: absent
+
+  # Add user to docker group
+
   - name: get current user name
     become: false
     local_action: command whoami
     register: current_username
   - debug: var=current_username
 
-
   - name: add current user to docker group
     user:
       name: "{{current_username.stdout}}"
       groups: docker
       append: true
+
+  # Add completion for for binaries if doesn't exist
+
+  - name: check bash completion for kubeadm
+    stat:
+      path: /etc/bash_completion.d/kubeadm
+    register: file_kubeadm
+
+  - name: check bash completion for kubectl
+    stat:
+      path: /etc/bash_completion.d/kubectl
+    register: file_kubectl
+
+  - name: check bash completion for helm
+    stat:
+      path: /etc/bash_completion.d/helm
+    register: file_helm
+
+  - name: add bash completion for kubeadm
+    shell: kubeadm completion bash > /etc/bash_completion.d/kubeadm
+    when: file_kubeadm.stat.exists == false
+
+  - name: add bash completion for kubectl
+    shell: kubectl completion bash > /etc/bash_completion.d/kubectl
+    when: file_kubectl.stat.exists == false
+
+  - name: add bash completion for helm
+    shell: helm completion bash > /etc/bash_completion.d/helm
+    when: file_helm.stat.exists == false
+
+  # Copy docker default config
 
   - name: copy docker config
     copy: src=./daemon.json dest=/etc/docker/daemon.json
@@ -64,7 +113,23 @@
     - restart docker service
 
   handlers:
+
+  # Restart docker service if config file is changed
+
   - name: restart docker service
     service:
       name: docker
       state: restarted
+
+  # Install helm if it is not installed
+
+  - name: download helm installation script
+    get_url: url=https://git.io/get_helm.sh dest=/tmp/get_helm.sh mode=755
+
+  - name: install helm
+    command: /tmp/get_helm.sh
+
+  - name: remove helm installation script
+    file:
+      path: /tmp/get_helm.sh
+      state: absent
