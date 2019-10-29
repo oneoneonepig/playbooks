@@ -50,8 +50,8 @@
     notify:
     - restart docker service
 
-	handlers:
-	- name: restart docker service
-	  service:
-	    name: docker
-	    state: restarted
+  handlers:
+  - name: restart docker service
+    service:
+      name: docker
+      state: restarted
